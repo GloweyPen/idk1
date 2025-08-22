@@ -4,11 +4,13 @@
   "description": "Discord bot with Groq AI integration",
   "main": "api/discord.js",
   "scripts": {
-    "dev": "vercel dev"
+    "dev": "vercel dev",
+    "register-commands": "node register-commands.js"
   },
   "dependencies": {
     "groq-sdk": "^0.3.1",
     "got": "^11.8.6",
-    "tweetnacl": "^1.0.3"
+    "tweetnacl": "^1.0.3",
+    "discord.js": "^14" 
   }
 }
