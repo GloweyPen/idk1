@@ -1,0 +1,33 @@
+name: Register Discord Commands
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:  # manual trigger
+
+jobs:
+  register:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'  # or your preferred Node version
+
+    - name: Install dependencies
+      run: npm install
+
+    - name: Register slash commands
+      env:
+        DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+        DISCORD_APPLICATION_ID: ${{ secrets.DISCORD_APPLICATION_ID }}
+      run: |
+        # Set environment variables for your script
+        # You can also export if needed
+        echo "Registering commands..."
+        node register-commands.js
