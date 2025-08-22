@@ -4,14 +4,18 @@ on:
   push:
     branches:
       - main
-  # You can also trigger manually with workflow_dispatch
+  # Or trigger manually with workflow_dispatch
 
 jobs:
   run-server:
     runs-on: ubuntu-latest
 
     env:
-      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}  # Pulls secret from GitHub Secrets
+      # Pass secrets from GitHub Secrets to environment variables
+      DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+      DISCORD_APPLICATION_ID: ${{ secrets.DISCORD_APPLICATION_ID }}
+      DISCORD_PUBLIC_KEY: ${{ secrets.DISCORD_PUBLIC_KEY }}
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
 
     steps:
     - name: Checkout code
@@ -25,7 +29,13 @@ jobs:
     - name: Install dependencies
       run: npm install
 
+    - name: Verify environment variables
+      run: |
+        echo "DISCORD_BOT_TOKEN: $DISCORD_BOT_TOKEN"
+        echo "DISCORD_APPLICATION_ID: $DISCORD_APPLICATION_ID"
+        echo "DISCORD_PUBLIC_KEY: $DISCORD_PUBLIC_KEY"
+        echo "GROQ_API_KEY: $GROQ_API_KEY"
+
     - name: Run server
       run: |
-        # The environment variable is available here
         node index.js
