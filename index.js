@@ -6,10 +6,11 @@ const { REST, Routes } = require('discord.js');
 
 const APPLICATION_ID = process.env.DISCORD_APPLICATION_ID; // Your application ID
 const PUBLIC_KEY = process.env.DISCORD_PUBLIC_KEY; // Your application's public key
-const GROQ_API_KEY = process.env.GROQ_API_KEY;
 const PORT = process.env.PORT || 3000;
 
-// Initialize Groq SDK
+const GROQ_API_KEY = process.env.GROQ_API_KEY; // Your API key stored in env variable
+
+// Initialize Groq SDK with API key from environment variable
 const groq = new Groq({ apiKey: GROQ_API_KEY });
 
 // Define commands
@@ -68,18 +69,17 @@ const commands = [
   },
 ];
 
-// Register commands globally
+// Function to register commands with Discord
 async function registerCommands() {
-  const rest = new REST({ version: '10' }).setToken('YOUR_APPLICATION_BOT_TOKEN');
-  // Replace 'YOUR_APPLICATION_BOT_TOKEN' with your bot token (not user token)
+  const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_BOT_TOKEN);
   try {
     await rest.put(
-      Routes.applicationCommands(APPLICATION_ID),
+      Routes.applicationCommands(process.env.DISCORD_APPLICATION_ID),
       { body: commands }
     );
-    console.log('Successfully registered global commands.');
-  } catch (error) {
-    console.error('Error registering commands:', error);
+    console.log('Successfully registered commands.');
+  } catch (err) {
+    console.error('Error registering commands:', err);
   }
 }
 
@@ -184,7 +184,7 @@ Available commands:
   res.status(400).send('Unknown interaction type');
 });
 
-// Initialize server and register commands
+// Register commands on startup
 (async () => {
   await registerCommands();
   app.listen(PORT, () => {
