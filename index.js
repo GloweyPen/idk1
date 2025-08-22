@@ -2,20 +2,15 @@ import express from "express";
 import DiscordOauth2 from "discord-oauth2";
 import fetch from "node-fetch";
 import fs from "fs-extra";
-import { createObjectCsvWriter } from "csv-writer";
 
-// --- Read secrets from environment (repo secrets) ---
+const app = express();
+
+// --- Repository secrets ---
 const DISCORD_CLIENT_ID = process.env.DISCORD_CLIENT_ID;
 const DISCORD_CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET;
 const DISCORD_REDIRECT_URI = process.env.DISCORD_REDIRECT_URI;
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
 
-if (!DISCORD_CLIENT_ID || !DISCORD_CLIENT_SECRET || !DISCORD_REDIRECT_URI) {
-  console.error("Missing Discord OAuth2 secrets!");
-  process.exit(1);
-}
-
-const app = express();
 const oauth = new DiscordOauth2({
   clientId: DISCORD_CLIENT_ID,
   clientSecret: DISCORD_CLIENT_SECRET,
@@ -52,46 +47,52 @@ async function analyzeWithGroq(prompt) {
   return data.output_text || "No AI output";
 }
 
-// --- OAuth2 Redirect ---
+// --- Home route ---
 app.get("/", (req, res) => {
-  const url = oauth.generateAuthUrl({ scope: ["identify", "connections"], responseType: "code" });
-  res.send(`<h1>Discord OSINT App</h1><a href="${url}">Authorize with Discord</a>`);
+  const url = oauth.generateAuthUrl({
+    scope: ["identify", "connections"],
+    responseType: "code"
+  });
+  res.send(`<h1>Discord OSINT + AI App</h1><a href="${url}">Authorize with Discord</a>`);
 });
 
-// --- OAuth2 Callback ---
+// --- Callback route (Vercel-ready) ---
 app.get("/callback", async (req, res) => {
   const code = req.query.code;
   if (!code) return res.send("No code provided");
 
   try {
+    // Exchange code for token (server-side only)
     const token = await oauth.tokenRequest({
       code,
       scope: "identify connections",
       grantType: "authorization_code"
     });
 
+    // Fetch user info & connections
     const user = await oauth.getUser(token.access_token);
     const connections = await oauth.getUserConnections(token.access_token);
 
-    // --- Example: Roblox info (if username same as Discord username) ---
+    // Fetch Roblox info (Eryn API)
     const roblox = await getRobloxInfo(user.username);
 
-    // --- AI Summary ---
-    const prompt = `Analyze the public info and connections for OSINT purposes:
+    // AI summary with Groq
+    const prompt = `
+Analyze the public info and connections for OSINT purposes:
 User: ${user.username}#${user.discriminator}
 Connections: ${JSON.stringify(connections)}
 Roblox info: ${JSON.stringify(roblox)}
 `;
     const aiSummary = await analyzeWithGroq(prompt);
 
-    // Save JSON
+    // Save only consented public info (no token)
     await fs.ensureDir("./data");
-    const filePath = `./data/${user.id}.json`;
-    await fs.writeJSON(filePath, { user, connections, roblox, aiSummary }, { spaces: 2 });
+    await fs.writeJSON(`./data/${user.id}.json`, { user, connections, roblox, aiSummary }, { spaces: 2 });
 
+    // Respond to user
     res.send(`
       <h2>Hello, ${user.username}#${user.discriminator}</h2>
-      <p>Data saved (user-consented)</p>
+      <p>Public data saved and AI OSINT summary generated.</p>
       <pre>${aiSummary}</pre>
       ${roblox ? `<img src="${roblox.avatar}" alt="Roblox Avatar"/>` : ""}
     `);
@@ -102,4 +103,6 @@ Roblox info: ${JSON.stringify(roblox)}
   }
 });
 
-app.listen(3000, () => console.log("App running on http://localhost:3000"));
+// --- Start server ---
+const port = process.env.PORT || 3000;
+app.listen(port, () => console.log(`App running on port ${port}`));
